@@ -4,8 +4,30 @@ import { useAppStore } from './store'
 import { supabase } from './lib/supabase'
 import { AppShell } from './components/layout/AppShell'
 import { Auth } from './pages/Auth'
+import { LifeScore } from './pages/LifeScore'
 import { Dashboard } from './pages/Dashboard' 
+import { Finance } from './pages/Finance'
+import { Goals } from './pages/Goals'
+import { Admin } from './pages/Admin'
+import { Health } from './pages/Health'
+import { Learning } from './pages/Learning'
+import { Career } from './pages/Career'
+import { Knowledge } from './pages/Knowledge'
+import { Community } from './pages/Community'
+import { Family } from './pages/Family'
+import { Giving } from './pages/Giving'
+import { AiAssistant } from './pages/AIAssistant'
+import { Rewards } from './pages/Rewards'
+import { Settings } from './pages/Settings'
 import { SkeletonLoader } from './components/ui/SkeletonLoader'
+import { Investments } from './pages/Investments'
+import { Marketplace } from './pages/Marketplace'
+import { HomeProperty } from './pages/HomeProperty'
+import { Travel } from './pages/Travel'
+import { DigitalIdentity } from './pages/DigitalIdentity'
+import { MentalWellness } from './pages/MentalWellness'
+import { Emergency } from './pages/Emergency'
+import { Sustainability } from './pages/Sustainability'
 
 // Simple Protected Route wrapper component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -95,28 +117,29 @@ export const App = () => {
       <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="life-score" element={<PagePlaceholder title="Life Score Tracking" />} />
-        <Route path="finance" element={<PagePlaceholder title="Finance Hub" />} />
-        <Route path="investments" element={<PagePlaceholder title="Investment Portfolio" />} />
-        <Route path="documents" element={<PagePlaceholder title="Document Vault" />} />
-        <Route path="home-property" element={<PagePlaceholder title="Home & Property" />} />
-        <Route path="travel" element={<PagePlaceholder title="Travel Hub" />} />
-        <Route path="digital-identity" element={<PagePlaceholder title="Digital Identity" />} />
-        <Route path="health" element={<PagePlaceholder title="Health Center" />} />
-        <Route path="wellness" element={<PagePlaceholder title="Mental Wellness" />} />
-        <Route path="emergency" element={<PagePlaceholder title="Emergency & Safety" />} />
-        <Route path="goals" element={<PagePlaceholder title="Life Goals & Milestones" />} />
-        <Route path="career" element={<PagePlaceholder title="Career Management Hub" />} />
-        <Route path="learning" element={<PagePlaceholder title="Skill Acquisition & Learning" />} />
-        <Route path="knowledge" element={<PagePlaceholder title="Knowledge Base Wiki" />} />
-        <Route path="community" element={<PagePlaceholder title="Social Interaction Node" />} />
-        <Route path="family" element={<PagePlaceholder title="Family Hub Connections" />} />
-        <Route path="giving" element={<PagePlaceholder title="Legacy & Giving Vault" />} />
-        <Route path="ai-assistant" element={<PagePlaceholder title="Automated AI Core" />} />
-        <Route path="rewards" element={<PagePlaceholder title="Gamified Rewards System" />} />
-        <Route path="sustainability" element={<PagePlaceholder title="Eco-Footprint Optimization" />} />
-        <Route path="marketplace" element={<PagePlaceholder title="E-Commerce Hub" />} />
-        <Route path="settings" element={<PagePlaceholder title="Global System Settings" />} />
+        <Route path="life-score" element={<LifeScore />} />
+        <Route path="finance" element={<Finance />} />
+        <Route path="investments" element={<Investments />} />
+        <Route path="home-property" element={<HomeProperty />} />
+        <Route path="documents" element={<Admin />} />
+        <Route path="travel" element={<Travel />} />
+        <Route path="digital-identity" element={<DigitalIdentity />} />
+        <Route path="health" element={<Health />} />
+        <Route path="wellness" element={<MentalWellness />} />
+        <Route path="emergency" element={<Emergency />} />
+        <Route path="goals" element={<Goals />} />
+        <Route path="career" element={<Career />} />
+        <Route path="learning" element={<Learning />} />
+        <Route path="knowledge" element={<Knowledge />} />
+        <Route path="community" element={<Community />} />
+        <Route path="family" element={<Family />} />
+        <Route path="giving" element={<Giving />} />
+        <Route path="ai-assistant" element={<AiAssistant />} />
+        <Route path="rewards" element={<Rewards />} />
+        <Route path="sustainability" element={<Sustainability />} />
+        <Route path="marketplace" element={<Marketplace />} />
+        <Route path="settings" element={<Settings />} />
+
       </Route>
 
       {/* Fallback Catch All */}

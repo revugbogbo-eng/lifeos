@@ -1,18 +1,40 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { toast } from '../store'
+import { useNavigate } from 'react-router-dom'
 import { isValidEmail } from '../lib/security'
+import { supabase } from '../lib/supabase' // Standard top-level import to clear typescript errors
 import { Shield, Mail, Lock, User, Sparkles } from 'lucide-react'
 
 export const Auth = () => {
   const { signIn, signUp, loading, authError } = useAuth()
+  const navigate = useNavigate()
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
+
+  // MONITOR FORCE GATE: Check session on load and actively watch for state changes
+  useEffect(() => {
+    // 1. Immediate validation of existing local storage tokens
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate('/dashboard')
+      }
+    })
+
+    // 2. Active subscription listener to forward the user the moment sign-in succeeds
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        navigate('/dashboard')
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -115,7 +137,7 @@ export const Auth = () => {
                 <input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   className="w-full bg-white/[0.02] border border-white/[0.06] rounded-xl pl-9 pr-3 py-2.5 text-xs text-los-text placeholder:text-los-text3 focus:border-los-purple/50 focus:bg-white/[0.04] outline-none transition-all duration-200"
                 />
