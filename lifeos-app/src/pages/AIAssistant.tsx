@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Bot, Send, Sparkles, Cpu, Zap, Mic, Paperclip, ChevronRight } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
 // --- MOCK DATA ---
 const initialMessages = [
@@ -40,26 +41,52 @@ export const AiAssistant = () => {
     scrollToBottom()
   }, [messages, isTyping])
 
-  const handleSendMessage = (text: string) => {
+const handleSendMessage = async (text: string) => {
     if (!text.trim()) return
 
-    // 1. Add User Message
-    const newUserMsg = { id: Date.now(), sender: 'user', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+    const userTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const newUserMsg = { id: Date.now(), sender: 'user', text, time: userTime }
     setMessages(prev => [...prev, newUserMsg])
     setInputValue('')
     setIsTyping(true)
 
-    // 2. Simulate AI Processing Delay
-    setTimeout(() => {
-      const newAiMsg = { 
+    try {
+      const apiHistory = messages
+        .filter(msg => msg.id !== 1)
+        .map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.text
+        }))
+
+      // PRODUCTION READY: Hitting your secure Supabase Edge Function instead of OpenAI directly
+      const { data, error } = await supabase.functions.invoke('chat', {
+        body: { messages: [systemPrompt, ...apiHistory, { role: 'user', content: text }] }
+      })
+
+      if (error) throw error
+      if (data.error) throw new Error(data.error.message)
+
+      const aiResponseText = data.choices[0].message.content
+      const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      
+      setMessages(prev => [...prev, { 
         id: Date.now() + 1, 
         sender: 'system', 
-        text: 'I am currently operating in offline-demo mode, but once you connect my backend to the OpenAI API, I will be able to execute this command and interact directly with your Supabase database!', 
+        text: aiResponseText, 
+        time: aiTime 
+      }])
+
+    } catch (error: any) {
+      console.error('AI Error:', error)
+      setMessages(prev => [...prev, { 
+        id: Date.now() + 1, 
+        sender: 'system', 
+        text: `⚠️ System Error: Could not connect to the neural network.`, 
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-      }
-      setMessages(prev => [...prev, newAiMsg])
+      }])
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
   }
 
   return (

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#07070f"/>
+  <circle cx="256" cy="200" r="110" fill="#7c6fff"/>
+  <rect x="146" y="330" width="220" height="50" rx="25" fill="#7c6fff"/>
+  <text x="256" y="460" text-anchor="middle" fill="#f1f1f8"
+    font-size="56" font-family="Arial,sans-serif" font-weight="800">LifeOS</text>
+</svg>
