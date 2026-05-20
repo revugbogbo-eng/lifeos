@@ -18,10 +18,10 @@ Deno.serve(async (req) => {
     { auth: { persistSession: false } }
   )
 
-  const groqKey = Deno.env.get('GROQ_API_KEY')!
+  const geminiKey = Deno.env.get('GEMINI_API_KEY')!
 
   try {
-    console.log('🤖 LifeOS AI Notification Engine starting...')
+    console.log('🤖 LifeOS AI Notification Engine starting via Gemini...')
 
     const { data: users } = await supabaseAdmin
       .from('notification_preferences')
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
         if ((todayCount || 0) >= prefs.max_per_day) continue
 
         const userData = await gatherUserData(supabaseAdmin, prefs.user_id, prefs)
-        const notifications = await generateWithAI(userData, groqKey)
+        const notifications = await generateWithAI(userData, geminiKey)
 
         if (notifications.length > 0) {
           await supabaseAdmin.from('notifications').insert(
@@ -132,36 +132,26 @@ async function gatherUserData(supabase: any, userId: string, prefs: any) {
 }
 
 async function generateWithAI(userData: any, apiKey: string): Promise<any[]> {
-  const system = `You are the LifeOS AI Notification Engine.
-Analyse user data and generate helpful push notifications.
-Rules: Max 4 notifications per run. Only notify about genuinely important things.
-Be specific and actionable.
-Prioritise: urgent(same day) > high(within 3 days) > normal > low.
-Titles under 50 chars, body under 100 chars.
-Respond ONLY with a JSON array. No other text.
-Example:
-[{"type":"bill_due","category":"finance","title":"Bill Due Tomorrow 💸","body":"Netflix ₦5,600 due in 1 day","priority":"high","action_url":"/finance?tab=bills","ai_reasoning":"Due within 24h"}]
-If nothing needs notification, return: []`
+  const system = `You are the LifeOS AI Notification Engine. Analyse user data and generate helpful push notifications. Rules: Max 4 notifications per run. Only notify about genuinely important things. Be specific and actionable. Prioritise: urgent(same day) > high(within 3 days) > normal > low. Titles under 50 chars, body under 100 chars. Respond ONLY with a JSON array. No other conversational text.
+  Example: [{"type":"bill_due","category":"finance","title":"Bill Due Tomorrow 💸","body":"Netflix ₦5,600 due in 1 day","priority":"high","action_url":"/finance?tab=bills","ai_reasoning":"Due within 24h"}]
+  If nothing needs notification, return: []`
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama3-70b-8192',
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: `Analyse this user data and generate notifications:\n${JSON.stringify(userData, null, 2)}` }
-        ],
-        temperature: 0.2, // Lower temperature means more strictly adhering to the JSON array constraint
+        contents: [{ role: 'user', parts: [{ text: `Analyse this user data and generate notifications:\n${JSON.stringify(userData, null, 2)}` }] }],
+        systemInstruction: { parts: [{ text: system }] },
+        generationConfig: { 
+          responseMimeType: 'application/json', // Forces Gemini to output pure strict JSON
+          temperature: 0.1 
+        }
       }),
     })
 
-    const groqData = await res.json()
-    const text = groqData.choices?.[0]?.message?.content || '[]'
+    const geminiData = await res.json()
+    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '[]'
     const parsed = JSON.parse(text)
     return Array.isArray(parsed) ? parsed.filter((n: any) => n.type && n.title && n.body) : []
   } catch {

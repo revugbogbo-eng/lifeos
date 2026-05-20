@@ -59,23 +59,27 @@ const handleSendMessage = async (text: string) => {
         }))
 
       // PRODUCTION READY: Hitting your secure Supabase Edge Function instead of OpenAI directly
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: { messages: [systemPrompt, ...apiHistory, { role: 'user', content: text }] }
-      })
+      // 1. Invoke 'ai-chat' (not 'chat') and pass the simple user content text string
+const { data, error } = await supabase.functions.invoke('ai-chat', {
+  body: { 
+    messages: [...apiHistory, { role: 'user', content: text }],
+    mode: 'general' // Triggers your core general life coaching system prompt
+  }
+})
 
-      if (error) throw error
-      if (data.error) throw new Error(data.error.message)
+if (error) throw error
+if (data.error) throw new Error(data.error.message)
 
-      const aiResponseText = data.choices[0].message.content
-      const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      
-      setMessages(prev => [...prev, { 
-        id: Date.now() + 1, 
-        sender: 'system', 
-        text: aiResponseText, 
-        time: aiTime 
-      }])
+// 2. Read the response using the unified text mapping format we built into your Gemini edge function
+const aiResponseText = data.content?.[0]?.text || 'No response generated.'
+const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+setMessages(prev => [...prev, { 
+  id: Date.now() + 1, 
+  sender: 'system', 
+  text: aiResponseText, 
+  time: aiTime 
+}])
     } catch (error: any) {
       console.error('AI Error:', error)
       setMessages(prev => [...prev, { 

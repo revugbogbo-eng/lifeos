@@ -6,29 +6,14 @@ const corsHeaders = {
 }
 
 const SYSTEM_PROMPTS: Record<string, string> = {
-  general: `You are LifeOS Assistant — a warm, expert personal life advisor.
-You help users manage their finances, health, investments, goals, and overall life. Be concise, friendly, and actionable.
-Use bullet points and bold for clarity.`,
-  finance: `You are LifeOS Finance Advisor.
-You are an expert in personal finance, budgeting, debt management, and wealth building. Give specific, actionable financial advice.
-Always reference the user's actual situation.`,
-  health: `You are LifeOS Health Advisor.
-You provide wellness guidance, help track health goals, and give evidence-based health information.
-Always remind users to consult professionals for medical decisions.`,
-  investments: `You are LifeOS Investment Analyst.
-You understand crypto, stocks, portfolio management, and market analysis. Give balanced, educational investment guidance.
-Always mention that this is not financial advice.`,
-  goals: `You are LifeOS Life Coach.
-You help users set meaningful goals, break them into milestones, stay motivated, and track progress.
-Be encouraging and strategic.`,
-  wellness: `You are LifeOS Wellness Guide.
-You support mental health, stress management, mindfulness, and emotional wellbeing.
-Be compassionate, supportive, and practical.`,
-  study: `You are LifeOS Study Buddy.
-You explain concepts clearly, create quizzes, summarize content, and build study plans.
-Adapt to any subject the user needs help with.`,
-  coach: `You are LifeOS Life Coach.
-You provide weekly life reviews, help users reflect on progress, identify patterns, and create action plans across all life areas.`,
+  general: `You are LifeOS Assistant — a warm, expert personal life advisor. Help users manage finances, health, investments, and goals. Be concise, friendly, and actionable. Use bullet points and bold for clarity.`,
+  finance: `You are LifeOS Finance Advisor. Expert in personal finance, budgeting, debt management, and wealth building. Give specific, actionable financial advice based on the user's situation.`,
+  health: `You are LifeOS Health Advisor. Provide wellness guidance, track health goals, and give evidence-based information. Remind users to consult professionals for medical decisions.`,
+  investments: `You are LifeOS Investment Analyst. Understand crypto, stocks, portfolio management, and market analysis. Give balanced, educational investment guidance. Always mention this is not financial advice.`,
+  goals: `You are LifeOS Life Coach. Help users set meaningful goals, break them into milestones, stay motivated, and track progress. Be encouraging and strategic.`,
+  wellness: `You are LifeOS Wellness Guide. Support mental health, stress management, mindfulness, and emotional wellbeing. Be compassionate, supportive, and practical.`,
+  study: `You are LifeOS Study Buddy. Explain concepts clearly, create quizzes, summarize content, and build study plans. Adapt to any subject.`,
+  coach: `You are LifeOS Life Coach. Provide weekly life reviews, help users reflect on progress, identify patterns, and create action plans across all life areas.`,
 }
 
 Deno.serve(async (req) => {
@@ -46,7 +31,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     )
 
@@ -60,38 +45,60 @@ Deno.serve(async (req) => {
     const { messages, mode = 'general' } = await req.json()
     const systemPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.general
 
-    // 1. Call Groq's OpenAI-compatible endpoint
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('GROQ_API_KEY')!}`,
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(JSON.stringify({ error: "Messages array is required and cannot be empty." }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // 1. Initialize contents and inject the system prompt as the core structural context frame
+    const geminiContents = [
+      {
+        role: 'user',
+        parts: [{ text: `SYSTEM INSTRUCTION / CONTEXT ARCHITECTURE (Adhere to this strictly for all responses):\n${systemPrompt}` }]
       },
+      {
+        role: 'model',
+        parts: [{ text: 'Understood. I will adopt this persona and follow these instructions perfectly for the duration of our session.' }]
+      }
+    ]
+
+    // 2. Append the frontend conversation thread history cleanly
+    messages.forEach((m: any) => {
+      const rawText = m.content || m.text || '';
+      if (!rawText.trim()) return;
+
+      geminiContents.push({
+        role: m.role === 'assistant' || m.sender === 'system' ? 'model' : 'user',
+        parts: [{ text: rawText }]
+      });
+    });
+
+    const apiKey = Deno.env.get('GEMINI_API_KEY')!
+    
+    // 3. Fire request to Google's strict v1 REST endpoint with the optimized contents array
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama3-70b-8192', // High-tier open-source model
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ],
-        temperature: 0.7,
+        contents: geminiContents,
+        generationConfig: { 
+          maxOutputTokens: 1000, 
+          temperature: 0.7 
+        }
       }),
     })
 
     if (!response.ok) {
-      throw new Error(`Groq API error: ${response.status}`)
+      const rawErrorText = await response.text();
+      throw new Error(`Gemini API error: ${response.status} - ${rawErrorText}`)
     }
 
-    const groqData = await response.json()
-    const aiText = groqData.choices?.[0]?.message?.content || ''
+    const geminiData = await response.json()
+    const aiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
-    // 2. Format response to match Anthropic schema so your frontend doesn't break
     const anthropicCompatibleData = {
-      content: [
-        {
-          type: 'text',
-          text: aiText
-        }
-      ]
+      content: [{ type: 'text', text: aiText }]
     }
 
     return new Response(JSON.stringify(anthropicCompatibleData), {
@@ -99,7 +106,11 @@ Deno.serve(async (req) => {
     })
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: String(error) }), {
+    console.error("🚨 DETAILED BACKEND CRASH LOG:", error)
+    return new Response(JSON.stringify({ 
+      error: String(error),
+      message: error instanceof Error ? error.message : "Unknown backend failure"
+    }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
